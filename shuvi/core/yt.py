@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +11,7 @@ import yt_dlp
 from dotenv import load_dotenv
 from yt_dlp.utils import DownloadCancelled
 
+from shuvi.constant import BIN_FOLDER
 from shuvi.log import YtDlpLogger, logger
 
 if TYPE_CHECKING:
@@ -40,6 +42,10 @@ FILE_FORMATS: dict[str, FileFormat] = {
     ),
 }
 DEFAULT_FILE_FORMAT = "mp4"
+
+# Tools shipped in BIN_FOLDER; when missing (e.g. running from source), yt-dlp looks in PATH and the venv.
+FFMPEG_FOLDER = str(BIN_FOLDER) if shutil.which("ffmpeg", path=str(BIN_FOLDER)) else None
+DENO_PATH = shutil.which("deno", path=str(BIN_FOLDER))
 
 
 @dataclass(frozen=True)
@@ -113,7 +119,9 @@ class Youtube:
             "ignoreerrors": True,
             "retries": 10,
             "fragment_retries": 10,
-            "js_runtimes": {"deno": {}},  # solves YouTube's JS challenges, without which streams return 403
+            # Deno solves YouTube's JS challenges, without which streams return 403
+            "js_runtimes": {"deno": {"path": DENO_PATH} if DENO_PATH else {}},
+            "ffmpeg_location": FFMPEG_FOLDER,
             "extractor_retries": 5,
             "sleep_interval_requests": 1,
             "sleep_interval": 5,

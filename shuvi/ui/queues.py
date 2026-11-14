@@ -114,7 +114,10 @@ class DownloadWorker(QObject):
                 continue  # stopping, or cancelled while it was pending
             self.current = download
             self.started.emit(download)
-            status = self.process(download)
+            try:
+                status = self.process(download)
+            except Exception:  # noqa: BLE001 - a dead worker would block the queue and the cancel button
+                status = Status.FAILED
             if not self.stopping.is_set():
                 self.finished.emit(download, status)
 

@@ -1,5 +1,6 @@
 import logging
 import re
+import sys
 
 from yt_dlp.utils import remove_terminal_sequences
 
@@ -25,13 +26,17 @@ class ConsoleHandler(logging.StreamHandler):
     def emit(self, record: logging.LogRecord) -> None:
         progress = is_progress(record)
         if self.on_progress_line and not progress:
-            self.stream.write("\n")  # keep the last progress line instead of writing over it
+            try:
+                self.stream.write("\n")  # keep the last progress line instead of writing over it
+            except Exception:  # noqa: BLE001 - logging must never raise into the caller
+                self.handleError(record)
         self.terminator = "\r" if progress else "\n"
         self.on_progress_line = progress
         super().emit(record)
 
 
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=LOG_DATE_FORMAT, handlers=[ConsoleHandler()])
+console_handlers = [ConsoleHandler()] if sys.stderr else []  # windowed exe has no stderr
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=LOG_DATE_FORMAT, handlers=console_handlers)
 
 logger = logging.getLogger(APP_NAME)
 
