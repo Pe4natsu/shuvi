@@ -1,0 +1,17 @@
+[project]
+name = "shuvi"
+version = "0.1.0"
+description = "App to download Youtube videos"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "yt-dlp[default, deno]>=2026.10.21,<2027",
+
+]
+
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.0",
+    "pyinstaller>=6.10",
+]
