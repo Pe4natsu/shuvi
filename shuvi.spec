@@ -41,7 +41,8 @@ a = Analysis(
     ["shuvi/ui/main.py"],
     pathex=["."],
     # As data, not binaries: copied as they are, without PyInstaller moving their DLLs out of bin/
-    datas=[(str(path), TOOLS_FOLDER) for path in tools] + [(find_deno_bin(), TOOLS_FOLDER)],
+    datas=[(str(path), TOOLS_FOLDER) for path in tools]
+    + [(find_deno_bin(), TOOLS_FOLDER), ("shuvi/ui/theme.qss", "shuvi/ui")],
     excludes=["tkinter"],
 )
 a.binaries = [entry for entry in a.binaries if not is_unused(entry[0])]

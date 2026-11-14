@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QButtonGroup,
     QFormLayout,
@@ -28,6 +28,12 @@ class ShuviForm(QWidget):
         layout = QFormLayout()
         self.setLayout(layout)
         self.setMinimumWidth(400)
+        self.setObjectName("form")
+        self.setProperty("role", "card")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)  # lets the stylesheet paint this QWidget
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setVerticalSpacing(12)
+        layout.setHorizontalSpacing(14)
 
         self.url = QLineEdit(self)
         layout.addRow("URL", self.url)
@@ -40,6 +46,7 @@ class ShuviForm(QWidget):
 
         self.file_format = QButtonGroup(self)
         formats_layout = QHBoxLayout()
+        formats_layout.setSpacing(20)
         for name in FILE_FORMATS:
             button = QRadioButton(name, self)
             button.setChecked(name == DEFAULT_FILE_FORMAT)
@@ -48,7 +55,8 @@ class ShuviForm(QWidget):
         formats_layout.addStretch()
         layout.addRow("Format", formats_layout)
 
-        self.download_btn = QPushButton("Download")
+        self.download_btn = QPushButton("Download", self)
+        self.download_btn.setProperty("role", "primary")
         self.download_btn.clicked.connect(self.download)
         layout.addWidget(self.download_btn)
 

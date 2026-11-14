@@ -93,6 +93,7 @@ class VideoWidget(QWidget):
         layout.addLayout(self.stack, stretch=2)
 
         self.placeholder = QLabel("Enter a YouTube URL to watch the video here", self)
+        self.placeholder.setObjectName("videoPlaceholder")
         self.placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.placeholder.setWordWrap(True)
         self.stack.addWidget(self.placeholder)

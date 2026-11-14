@@ -25,6 +25,7 @@ class PlaylistWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.header = QLabel(self)
+        self.header.setProperty("role", "caption")
         layout.addWidget(self.header)
 
         self.list = QListWidget(self)

@@ -6,7 +6,7 @@ from enum import Enum
 from functools import partial
 from pathlib import Path
 
-from qtpy.QtCore import QObject, Signal
+from qtpy.QtCore import QObject, Qt, Signal
 from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -21,6 +21,7 @@ from qtpy.QtWidgets import (
 from shuvi.core.yt import DEFAULT_FILE_FORMAT, DownloadCancelled, Progress, Youtube
 from shuvi.log import logger
 from shuvi.ui.playlist import format_duration
+from shuvi.ui.theme import set_style_property
 
 REPORT_INTERVAL = 0.5  # seconds between progress updates when the percent does not change
 SPEED_UNITS = ("B/s", "KiB/s", "MiB/s", "GiB/s")
@@ -161,8 +162,11 @@ class QueueRow(QWidget):
         self.status = Status.PENDING
         self.percent = 0
 
+        self.setProperty("role", "card")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)  # lets the stylesheet paint this QWidget
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setContentsMargins(14, 10, 8, 10)
+        layout.setSpacing(12)
 
         self.description = QLabel(self)
         # Cut long titles instead of widening the window.
@@ -176,6 +180,7 @@ class QueueRow(QWidget):
         self.cancel_btn = QToolButton(self)
         self.cancel_btn.setText("✕")
         self.cancel_btn.setAutoRaise(True)
+        self.cancel_btn.setProperty("role", "remove")
         self.cancel_btn.clicked.connect(self.request_cancel)
         layout.addWidget(self.cancel_btn)
 
@@ -195,6 +200,7 @@ class QueueRow(QWidget):
         elif percent is not None:
             self.percent = percent
         is_downloading = status is Status.DOWNLOADING
+        set_style_property(self.status_label, "status", status.name.lower())
         self.status_label.setText(f"{status.value} {self.percent}%" if is_downloading else status.value)
         self.cancel_btn.setToolTip("Remove from the queue" if status.finished else "Cancel the download")
         self.cancel_btn.setEnabled(status is not Status.CANCELLING)
@@ -220,15 +226,26 @@ class QueueWidget(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent=parent)
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+
+        self.summary = QLabel(self)
+        self.summary.setProperty("role", "caption")
+        layout.addWidget(self.summary)
 
         self.progress_bar = QProgressBar(self)
+        self.progress_bar.setTextVisible(False)  # the summary above says it
         layout.addWidget(self.progress_bar)
+        layout.addSpacing(8)
 
         rows_container = QWidget(self)
+        rows_container.setObjectName("queueRows")
         self.rows_layout = QVBoxLayout(rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
+        self.rows_layout.setSpacing(8)
         self.rows_layout.addStretch()  # keeps the rows at the top
         scroll_area = QScrollArea(self)
+        scroll_area.setObjectName("queueScroll")
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(rows_container)
         layout.addWidget(scroll_area)
@@ -289,6 +306,7 @@ class QueueWidget(QWidget):
         """Update the overall progress bar and the number of active downloads."""
         rows = list(self.rows.values())
         finished = sum(row.status.finished for row in rows)
-        self.progress_bar.setValue(sum(row.percent for row in rows) // len(rows) if rows else 0)
-        self.progress_bar.setFormat(f"{finished}/{len(rows)} downloads done - %p%" if rows else "No downloads")
+        percent = sum(row.percent for row in rows) // len(rows) if rows else 0
+        self.progress_bar.setValue(percent)
+        self.summary.setText(f"{finished}/{len(rows)} downloads done · {percent}%" if rows else "No downloads")
         self.active_count_changed.emit(len(rows) - finished)

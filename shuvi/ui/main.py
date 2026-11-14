@@ -6,6 +6,7 @@ from qtpy.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QTabWidget, Q
 from shuvi.constant import APP_NAME
 from shuvi.ui.form import ShuviForm
 from shuvi.ui.log import LogWidget
+from shuvi.ui import theme
 from shuvi.ui.queues import QueueWidget
 from shuvi.ui.video import VideoWidget
 
@@ -14,6 +15,8 @@ class DownloadWindow(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent=parent)
         layout = QHBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
         self.form = ShuviForm(self)
         layout.addWidget(self.form)
@@ -56,6 +59,7 @@ class Shuvi(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
+    theme.apply(app)
     window = Shuvi()
     window.show()
     sys.exit(app.exec())

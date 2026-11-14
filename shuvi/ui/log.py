@@ -7,9 +7,10 @@ from qtpy.QtWidgets import QHBoxLayout, QPlainTextEdit, QPushButton, QVBoxLayout
 
 from shuvi.constant import LOG_DATE_FORMAT, LOG_FORMAT
 from shuvi.log import is_progress, logger
+from shuvi.ui.theme import COLORS
 
 # From the most to the least severe; less severe records keep the app's text color.
-LEVEL_COLORS = ((logging.ERROR, "#e53935"), (logging.WARNING, "#e0a800"))
+LEVEL_COLORS = ((logging.ERROR, COLORS["error"]), (logging.WARNING, COLORS["warning"]))
 MAX_LINES = 5000
 
 
@@ -39,8 +40,11 @@ class LogWidget(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent=parent)
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
 
         self.view = QPlainTextEdit(self)
+        self.view.setObjectName("logView")
         self.view.setReadOnly(True)
         self.view.setMaximumBlockCount(MAX_LINES)
         layout.addWidget(self.view)
