@@ -17,7 +17,7 @@ class ShuviWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.form = ShuviForm(central)
-        layout.addWidget(self.form, stretch=1)
+        layout.addWidget(self.form)
 
         self.video = VideoWidget(central)
         layout.addWidget(self.video, stretch=1)

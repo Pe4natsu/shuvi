@@ -28,6 +28,7 @@ class PlaylistWidget(QWidget):
         layout.addWidget(self.header)
 
         self.list = QListWidget(self)
+        self.list.setMinimumWidth(400)
         # Cut long titles with "..." instead of scrolling sideways (the tooltip shows the full title).
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list.itemClicked.connect(self.on_item_clicked)

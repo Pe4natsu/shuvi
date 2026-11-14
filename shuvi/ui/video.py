@@ -98,7 +98,7 @@ class VideoWidget(QWidget):
         self.stack.addWidget(self.placeholder)
 
         self.player = QWebEngineView(self)
-        self.player.setMinimumSize(320, 180)  # 16:9
+        self.player.setMinimumSize(480, 270)
         self.stack.addWidget(self.player)
 
         self.playlist = PlaylistWidget(self)
