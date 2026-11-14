@@ -1,0 +1,275 @@
+/* Shuvi dark theme. Each dollar-prefixed word is a color from COLORS in shuvi/ui/theme.py. */
+
+QWidget {
+    color: $text;
+    selection-background-color: $accent;
+    selection-color: $on_accent;
+}
+
+QMainWindow, QTabWidget::pane {
+    background: $bg;
+}
+
+QToolTip {
+    background: $raised;
+    color: $text;
+    border: 1px solid $border_strong;
+    padding: 4px 6px;
+}
+
+/* Tabs: plain text with an accent underline on the selected one */
+QTabWidget::pane {
+    border: none;
+    border-top: 1px solid $border;
+}
+
+QTabBar::tab {
+    background: transparent;
+    color: $text_muted;
+    padding: 10px 18px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+}
+
+QTabBar::tab:hover {
+    color: $text;
+}
+
+QTabBar::tab:selected {
+    color: $text;
+    border-bottom: 2px solid $accent;
+}
+
+/* Panels */
+QWidget[role="card"] {
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+
+QWidget[role="card"] QLabel {
+    background: transparent;
+}
+
+QLabel[role="caption"] {
+    color: $text_muted;
+    font-weight: 600;
+}
+
+QWidget#form > QLabel {
+    color: $text_muted;
+}
+
+QLabel#videoPlaceholder {
+    color: $text_faint;
+    background: $surface;
+    border: 1px dashed $border_strong;
+    border-radius: 10px;
+}
+
+/* Inputs */
+QLineEdit, QPlainTextEdit {
+    background: $bg;
+    border: 1px solid $border;
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+QLineEdit:hover, QPlainTextEdit:hover {
+    border-color: $border_strong;
+}
+
+QLineEdit:focus, QPlainTextEdit:focus {
+    border-color: $accent;
+}
+
+QPlainTextEdit#logView {
+    background: $surface;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 9pt;
+    padding: 8px;
+}
+
+/* Buttons */
+QPushButton {
+    background: $raised;
+    border: 1px solid $border_strong;
+    border-radius: 6px;
+    padding: 6px 14px;
+}
+
+QPushButton:hover {
+    background: $hover;
+    border-color: $text_faint;
+}
+
+QPushButton:pressed {
+    background: $surface;
+}
+
+QPushButton:disabled {
+    color: $text_faint;
+    border-color: $border;
+}
+
+QPushButton[role="primary"] {
+    background: $accent;
+    border: 1px solid $accent;
+    color: $on_accent;
+    font-weight: 700;
+    padding: 9px 18px;
+}
+
+QPushButton[role="primary"]:hover {
+    background: $accent_hover;
+    border-color: $accent_hover;
+}
+
+QPushButton[role="primary"]:pressed {
+    background: $accent_pressed;
+    border-color: $accent_pressed;
+}
+
+QToolButton[role="remove"] {
+    background: transparent;
+    border: none;
+    border-radius: 12px;
+    color: $text_faint;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+QToolButton[role="remove"]:hover {
+    background: $error_soft;
+    color: $error;
+}
+
+QToolButton[role="remove"]:disabled {
+    color: $border_strong;
+}
+
+/* Radio buttons: a ring that fills with the accent when checked */
+QRadioButton {
+    spacing: 8px;
+}
+
+QRadioButton::indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 8px;
+    border: 2px solid $border_strong;
+    background: $bg;
+}
+
+QRadioButton::indicator:hover {
+    border-color: $text_muted;
+}
+
+QRadioButton::indicator:checked {
+    border: 4px solid $accent;
+    width: 8px;
+    height: 8px;
+    background: $on_accent;
+}
+
+/* Lists */
+QListWidget {
+    background: $surface;
+    border: 1px solid $border;
+    border-radius: 10px;
+    padding: 4px;
+    outline: 0;
+}
+
+QListWidget::item {
+    color: $text_muted;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+QListWidget::item:hover {
+    background: $raised;
+    color: $text;
+}
+
+QListWidget::item:selected:active, QListWidget::item:selected:!active {
+    background: $accent_soft;
+    color: $text;
+}
+
+/* Queue */
+QScrollArea#queueScroll, QWidget#queueRows {
+    background: transparent;
+    border: none;
+}
+
+QProgressBar {
+    background: $raised;
+    border: none;
+    border-radius: 3px;
+    max-height: 6px;
+}
+
+QProgressBar::chunk {
+    background: $accent;
+    border-radius: 3px;
+}
+
+QLabel[status="pending"] {
+    color: $text_muted;
+}
+
+QLabel[status="downloading"], QLabel[status="cancelling"] {
+    color: $accent;
+}
+
+QLabel[status="done"] {
+    color: $success;
+}
+
+QLabel[status="errors"] {
+    color: $warning;
+}
+
+QLabel[status="failed"] {
+    color: $error;
+}
+
+/* Thin scrollbars without arrows */
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: $border_strong;
+    border-radius: 3px;
+    min-height: 32px;
+}
+
+QScrollBar::handle:horizontal {
+    background: $border_strong;
+    border-radius: 3px;
+    min-width: 32px;
+}
+
+QScrollBar::handle:hover {
+    background: $text_faint;
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+    width: 0;
+    height: 0;
+}
+
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}

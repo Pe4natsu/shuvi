@@ -1,17 +1,35 @@
 [project]
 name = "shuvi"
-version = "0.1.0"
+dynamic = ["version"]
 description = "App to download Youtube videos"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "python-dotenv>=1.2.4",
     "yt-dlp[default, deno]>=2026.10.21,<2027",
-
+    "pyside6-essentials>=6.10.3",
+    "qtpy>=2.4.3",
+    "pyside6-webengine>=6.12.0.140",
 ]
 
+
+[project.scripts]
+shuvi-playlist = "shuvi.core.playlists:run"
+shuvi-video = "shuvi.core.videos:run"
+
+[project.gui-scripts]
+shuvi = "shuvi.ui.main:main"
 
 [dependency-groups]
 dev = [
     "ruff>=0.14.0",
     "pyinstaller>=6.10",
 ]
+
+[build-system]
+requires      = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "shuvi/__init__.py"
+

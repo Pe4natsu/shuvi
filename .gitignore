@@ -2,12 +2,18 @@
 __pycache__/
 *.pyc
 
-# Virtual environments
+# Environments
 .venv/
+.env
 
 # IDE
 .idea/
 .ruff_cache/
+.vscode/
+
+# Large binaries (ffmpeg/ffprobe exceed GitHub's 100 MB limit) and downloaded videos
+bin/
+downloads/
 
 # PyInstaller
 build/
