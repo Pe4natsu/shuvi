@@ -5,8 +5,8 @@ description = "App to download Youtube videos"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "python-dotenv>=1.2.4",
     "yt-dlp[default, deno]>=2026.10.21,<2027",
-
 ]
 
 
