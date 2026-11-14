@@ -5,6 +5,7 @@ from qtpy.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QTabWidget, Q
 
 from shuvi.constant import APP_NAME
 from shuvi.ui.form import ShuviForm
+from shuvi.ui.log import LogWidget
 from shuvi.ui.queues import QueueWidget
 from shuvi.ui.video import VideoWidget
 
@@ -36,6 +37,9 @@ class Shuvi(QMainWindow):
 
         self.queue = QueueWidget(self)
         self.tabs.addTab(self.queue, "Queue")
+
+        self.log = LogWidget(self)
+        self.tabs.addTab(self.log, "Log")
 
         dl_window.form.download_requested.connect(self.queue.add)
         self.queue.active_count_changed.connect(self.update_queue_tab)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -9,7 +10,7 @@ import yt_dlp
 from dotenv import load_dotenv
 from yt_dlp.utils import DownloadCancelled
 
-from shuvi.log import logger
+from shuvi.log import YtDlpLogger, logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -17,7 +18,16 @@ if TYPE_CHECKING:
     from yt_dlp import _Params
     from yt_dlp.extractor.common import _InfoDict
 
-__all__ = ["DownloadCancelled", "Youtube", "download_fraction"]
+__all__ = ["DownloadCancelled", "Progress", "Youtube", "download_fraction"]
+
+
+@dataclass(frozen=True)
+class Progress:
+    """Progress of a running download."""
+
+    fraction: float  # of the whole video or playlist, from 0 to 1
+    speed: float | None  # bytes per second, for the file being downloaded
+    eta: float | None  # seconds left for the file being downloaded
 
 
 def download_fraction(status: Mapping[str, Any]) -> float:
@@ -48,7 +58,7 @@ class Youtube:
         self,
         output_folder: Path | None = None,
         profile: str | None = None,
-        on_progress: Callable[[float], None] | None = None,
+        on_progress: Callable[[Progress], None] | None = None,
         cancel_event: threading.Event | None = None,
     ):
         """Prepare downloads with the cookies of a Firefox profile.
@@ -56,7 +66,7 @@ class Youtube:
         Args:
             output_folder: where to download (default: current folder); not needed to list a playlist.
             profile: Firefox profile path (default: WEB_PROFILE environment variable).
-            on_progress: called with the fraction (0 to 1) of the running download that is done.
+            on_progress: called with the `Progress` of the running download.
             cancel_event: set it from any thread to stop the running download with `DownloadCancelled`.
 
         """
@@ -83,6 +93,7 @@ class Youtube:
             "sleep_interval_requests": 1,
             "sleep_interval": 5,
             "max_sleep_interval": 15,
+            "logger": YtDlpLogger(),
             "progress_hooks": [self.on_download_progress],
             "postprocessor_hooks": [self.on_postprocess],
             "match_filter": self.stop_if_cancelled,
@@ -95,7 +106,7 @@ class Youtube:
     def on_download_progress(self, status: Mapping[str, Any]) -> None:
         self.raise_if_cancelled()
         if self.on_progress:
-            self.on_progress(download_fraction(status))
+            self.on_progress(Progress(download_fraction(status), status.get("speed"), status.get("eta")))
 
     def on_postprocess(self, status: Mapping[str, Any]) -> None:  # noqa: ARG002 - signature set by yt-dlp
         self.raise_if_cancelled()
@@ -111,14 +122,14 @@ class Youtube:
             **self.base_options(),
             "extract_flat": "in_playlist",
             "playlistend": 1,  # a playlist's title does not need all of its entries
-            "quiet": True,
+            "logger": YtDlpLogger(quiet=True),
         }
         with yt_dlp.YoutubeDL(options) as ydl:
             info = ydl.extract_info(url, download=False)
         return (info.get("title") or "") if info else ""
 
     def list_playlist(self, url: str) -> list[_InfoDict]:
-        options: _Params = {**self.base_options(), "extract_flat": "in_playlist", "quiet": True}
+        options: _Params = {**self.base_options(), "extract_flat": "in_playlist", "logger": YtDlpLogger(quiet=True)}
         with yt_dlp.YoutubeDL(options) as ydl:
             info = ydl.extract_info(url, download=False)
         if not info:  # with "ignoreerrors", yt-dlp returns None instead of raising
