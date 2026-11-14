@@ -1,8 +1,9 @@
+from functools import cache
 from pathlib import Path
 from string import Template
 
-from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QFont, QIcon, QPalette
+from qtpy.QtCore import QPointF, Qt
+from qtpy.QtGui import QColor, QFont, QIcon, QPainter, QPalette, QPen, QPixmap
 from qtpy.QtWidgets import QApplication, QWidget
 
 # Warm graphite surfaces with an orchid purple accent.
@@ -46,6 +47,13 @@ PALETTE_ROLES = {
     QPalette.ColorRole.PlaceholderText: "text_faint",
     QPalette.ColorRole.Link: "accent",
 }
+# Symbols drawn on round badges: strokes as point lists, in fractions of the badge size.
+BADGE_SHAPES = {
+    "check": [((0.28, 0.53), (0.44, 0.69), (0.73, 0.37))],
+    "cross": [((0.34, 0.34), (0.66, 0.66)), ((0.66, 0.34), (0.34, 0.66))],
+}
+BADGE_STROKE = 0.13  # fraction of the badge size
+
 DISABLED_ROLES = (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText)
 
 
@@ -70,6 +78,27 @@ def apply(app: QApplication) -> None:
     font.setPointSize(FONT_POINT_SIZE)
     app.setFont(font)
     app.setStyleSheet(Template(STYLESHEET_PATH.read_text(encoding="utf-8")).substitute(COLORS))
+
+
+@cache
+def badge(shape: str, color: str, size: int, device_pixel_ratio: float = 1.0) -> QPixmap:
+    """Round badge filled with a COLORS color, with a BADGE_SHAPES symbol drawn on it."""
+    pixmap = QPixmap(round(size * device_pixel_ratio), round(size * device_pixel_ratio))
+    pixmap.setDevicePixelRatio(device_pixel_ratio)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor(COLORS[color]))
+    painter.drawEllipse(0, 0, size, size)
+    pen = QPen(QColor(COLORS["bg"]), size * BADGE_STROKE)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    for stroke in BADGE_SHAPES[shape]:
+        painter.drawPolyline([QPointF(x * size, y * size) for x, y in stroke])
+    painter.end()
+    return pixmap
 
 
 def set_style_property(widget: QWidget, name: str, value: str) -> None:

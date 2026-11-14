@@ -21,12 +21,13 @@ from qtpy.QtWidgets import (
 from shuvi.core.yt import DEFAULT_FILE_FORMAT, DownloadCancelled, Progress, Youtube
 from shuvi.log import logger
 from shuvi.ui.playlist import format_duration
-from shuvi.ui.theme import set_style_property
+from shuvi.ui.theme import badge, set_style_property
 
 REPORT_INTERVAL = 0.5  # seconds between progress updates when the percent does not change
 SPEED_UNITS = ("B/s", "KiB/s", "MiB/s", "GiB/s")
 BYTES_PER_KIB = 1024
-LONGEST_STATUS = "Downloading 100% · 999.9 MiB/s · ETA 00:00:00"  # sizes the status column
+STATUS_BADGE_SIZE = 18  # pixels
+LONGEST_STATUS ="Downloading 100% · 999.9 MiB/s · ETA 00:00:00"  # sizes the status column
 
 
 def format_speed(bytes_per_second: float) -> str:
@@ -54,6 +55,8 @@ class Status(Enum):
 
 
 FINISHED_STATUSES = frozenset({Status.CANCELLED, Status.DONE, Status.ERRORS, Status.FAILED})
+# Round badge before the status text: (theme.BADGE_SHAPES symbol, theme.COLORS fill)
+STATUS_BADGES = {Status.DONE: ("check", "success"), Status.FAILED: ("cross", "error")}
 
 
 @dataclass(eq=False)
@@ -173,9 +176,16 @@ class QueueRow(QWidget):
         self.description.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.description, stretch=1)
 
+        status_layout = QHBoxLayout()
+        status_layout.setSpacing(6)
+        self.status_badge = QLabel(self)
+        self.status_badge.setFixedSize(STATUS_BADGE_SIZE, STATUS_BADGE_SIZE)
+        self.status_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        status_layout.addWidget(self.status_badge)
         self.status_label = QLabel(self)
         self.status_label.setMinimumWidth(self.status_label.fontMetrics().horizontalAdvance(LONGEST_STATUS))
-        layout.addWidget(self.status_label)
+        status_layout.addWidget(self.status_label)
+        layout.addLayout(status_layout)
 
         self.cancel_btn = QToolButton(self)
         self.cancel_btn.setText("✕")
@@ -201,6 +211,10 @@ class QueueRow(QWidget):
             self.percent = percent
         is_downloading = status is Status.DOWNLOADING
         set_style_property(self.status_label, "status", status.name.lower())
+        if status in STATUS_BADGES:
+            shape, color = STATUS_BADGES[status]
+            self.status_badge.setPixmap(badge(shape, color, STATUS_BADGE_SIZE, self.devicePixelRatioF()))
+        self.status_badge.setVisible(status in STATUS_BADGES)
         self.status_label.setText(f"{status.value} {self.percent}%" if is_downloading else status.value)
         self.cancel_btn.setToolTip("Remove from the queue" if status.finished else "Cancel the download")
         self.cancel_btn.setEnabled(status is not Status.CANCELLING)
