@@ -5,6 +5,7 @@ from pathlib import Path, PurePath
 from deno import find_deno_bin
 
 TOOLS_FOLDER = "bin"  # matches shuvi.constant.BIN_FOLDER inside the bundle
+ICON = "shuvi/ui/assets/icon.ico"
 KEPT_WEBENGINE_LOCALES = {"en-US.pak"}  # Qt WebEngine falls back to en-US for the other languages
 
 # Qt parts pulled in by PySide6's hooks that the app never uses, matched against bundled file paths.
@@ -42,12 +43,12 @@ a = Analysis(
     pathex=["."],
     # As data, not binaries: copied as they are, without PyInstaller moving their DLLs out of bin/
     datas=[(str(path), TOOLS_FOLDER) for path in tools]
-    + [(find_deno_bin(), TOOLS_FOLDER), ("shuvi/ui/theme.qss", "shuvi/ui")],
+    + [(find_deno_bin(), TOOLS_FOLDER), ("shuvi/ui/theme.qss", "shuvi/ui"), (ICON, "shuvi/ui/assets")],
     excludes=["tkinter"],
 )
 a.binaries = [entry for entry in a.binaries if not is_unused(entry[0])]
 a.datas = [entry for entry in a.datas if not is_unused(entry[0])]
 
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Shuvi", console=False)
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="Shuvi", console=False, icon=ICON)
 coll = COLLECT(exe, a.binaries, a.datas, name="Shuvi")

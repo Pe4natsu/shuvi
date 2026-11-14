@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Shuvi app icon: a play tile with a download arrow, in the theme's orchid purple (COLORS in shuvi/ui/theme.py) -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c385e6"/>
+      <stop offset="1" stop-color="#9853c0"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="40" width="232" height="176" rx="48" fill="url(#tile)"/>
+  <path d="M110 70 Q110 61 118 65 L160 89 Q167 95 160 101 L118 125 Q110 129 110 120 Z" fill="#f6f0f9"/>
+  <g fill="none" stroke="#f6f0f9" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 142 V178"/>
+    <path d="M111 162 L128 179 L145 162"/>
+    <path d="M102 196 H154"/>
+  </g>
+</svg>

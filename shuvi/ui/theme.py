@@ -2,10 +2,10 @@ from pathlib import Path
 from string import Template
 
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QColor, QFont, QPalette
+from qtpy.QtGui import QColor, QFont, QIcon, QPalette
 from qtpy.QtWidgets import QApplication, QWidget
 
-# Warm graphite surfaces with a persimmon accent.
+# Warm graphite surfaces with an orchid purple accent.
 COLORS = {
     "bg": "#141311",
     "surface": "#1c1a17",
@@ -16,11 +16,11 @@ COLORS = {
     "text": "#ece6da",
     "text_muted": "#9c958a",
     "text_faint": "#6b655c",
-    "accent": "#e8693f",
-    "accent_hover": "#f27d55",
-    "accent_pressed": "#c9552f",
-    "accent_soft": "#46291f",
-    "on_accent": "#1a0f0a",
+    "accent": "#b36bdb",
+    "accent_hover": "#c385e6",
+    "accent_pressed": "#9853c0",
+    "accent_soft": "#3d2c42",
+    "on_accent": "#170d1c",
     "success": "#9bb57a",
     "warning": "#d9a441",
     "error": "#e0574a",
@@ -29,6 +29,7 @@ COLORS = {
 FONT_FAMILIES = ["Segoe UI Variable Text", "Segoe UI"]
 FONT_POINT_SIZE = 10
 STYLESHEET_PATH = Path(__file__).with_name("theme.qss")
+ICON_PATH = Path(__file__).with_name("assets") / "icon.ico"  # made from assets/icon.svg
 
 PALETTE_ROLES = {
     QPalette.ColorRole.Window: "bg",
@@ -63,6 +64,7 @@ def apply(app: QApplication) -> None:
     app.setStyle("Fusion")  # the most faithful base for stylesheets
     app.styleHints().setColorScheme(Qt.ColorScheme.Dark)  # dark Windows title bar
     app.setPalette(palette())
+    app.setWindowIcon(QIcon(str(ICON_PATH)))
     font = QFont()
     font.setFamilies(FONT_FAMILIES)
     font.setPointSize(FONT_POINT_SIZE)

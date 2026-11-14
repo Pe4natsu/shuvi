@@ -1,3 +1,4 @@
+import ctypes
 import sys
 
 from qtpy.QtGui import QCloseEvent
@@ -58,6 +59,8 @@ class Shuvi(QMainWindow):
 
 
 def main():
+    if sys.platform == "win32":  # own taskbar entry and icon, instead of Python's when run from source
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_NAME)
     app = QApplication(sys.argv)
     theme.apply(app)
     window = Shuvi()
