@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -8,12 +7,11 @@ from typing import TYPE_CHECKING
 import yt_dlp
 from dotenv import load_dotenv
 
+from shuvi.log import logger
+
 if TYPE_CHECKING:
     from yt_dlp import _Params
     from yt_dlp.extractor.common import _InfoDict
-
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-logger = logging.getLogger(__name__)
 
 
 class Youtube:
@@ -80,6 +78,6 @@ class Youtube:
 if __name__ == "__main__":
     load_dotenv()  # finds .env in this file's folder or the nearest parent folder (here: project root)
     profile_path = os.environ["WEB_PROFILE"]
-    output_folder = Path(__file__).parent.parent / "downloads" / "Test"
+    output_folder = Path(__file__).parent.parent.parent / "downloads" / "Test"
     youtube = Youtube(profile=profile_path, output_folder=output_folder)
     youtube.download_video(url="https://www.youtube.com/watch?v=MCYm453CE6Y")
