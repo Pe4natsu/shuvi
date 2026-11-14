@@ -18,7 +18,28 @@ if TYPE_CHECKING:
     from yt_dlp import _Params
     from yt_dlp.extractor.common import _InfoDict
 
-__all__ = ["DownloadCancelled", "Progress", "Youtube", "download_fraction"]
+__all__ = ["DEFAULT_FILE_FORMAT", "FILE_FORMATS", "DownloadCancelled", "Progress", "Youtube", "download_fraction"]
+
+
+@dataclass(frozen=True)
+class FileFormat:
+    """Yt-dlp options that produce one kind of output file."""
+
+    options: _Params
+    audio_only: bool = False
+
+
+FILE_FORMATS: dict[str, FileFormat] = {
+    "mp4": FileFormat({"format": "bestvideo*+bestaudio/best", "merge_output_format": "mp4"}),
+    "mp3": FileFormat(
+        {
+            "format": "bestaudio/best",
+            "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}],
+        },
+        audio_only=True,
+    ),
+}
+DEFAULT_FILE_FORMAT = "mp4"
 
 
 @dataclass(frozen=True)
@@ -30,7 +51,7 @@ class Progress:
     eta: float | None  # seconds left for the file being downloaded
 
 
-def download_fraction(status: Mapping[str, Any]) -> float:
+def download_fraction(status: Mapping[str, Any], *, audio_only: bool = False) -> float:
     """Fraction (0 to 1) of a whole video or playlist download reached at a yt-dlp progress status."""
     info = status.get("info_dict") or {}
     total_bytes = status.get("total_bytes") or status.get("total_bytes_estimate")
@@ -41,8 +62,10 @@ def download_fraction(status: Mapping[str, Any]) -> float:
     else:
         file_fraction = 0.0
 
-    # Best quality is a video-only stream then an audio-only one, each counting for half of the video.
-    if info.get("acodec") == "none":
+    # Best video quality is a video-only stream then an audio-only one, each counting for half of the video.
+    if audio_only:
+        video_fraction = file_fraction
+    elif info.get("acodec") == "none":
         video_fraction = file_fraction / 2
     elif info.get("vcodec") == "none":
         video_fraction = (1 + file_fraction) / 2
@@ -58,6 +81,7 @@ class Youtube:
         self,
         output_folder: Path | None = None,
         profile: str | None = None,
+        file_format: str = DEFAULT_FILE_FORMAT,
         on_progress: Callable[[Progress], None] | None = None,
         cancel_event: threading.Event | None = None,
     ):
@@ -66,6 +90,7 @@ class Youtube:
         Args:
             output_folder: where to download (default: current folder); not needed to list a playlist.
             profile: Firefox profile path (default: WEB_PROFILE environment variable).
+            file_format: a key of `FILE_FORMATS`, e.g. "mp4" or "mp3".
             on_progress: called with the `Progress` of the running download.
             cancel_event: set it from any thread to stop the running download with `DownloadCancelled`.
 
@@ -75,13 +100,13 @@ class Youtube:
         self.output_folder = Path(output_folder) if output_folder else Path.cwd()
         if output_folder:
             self.output_folder.mkdir(parents=True, exist_ok=True)
+        self.file_format = file_format
         self.on_progress = on_progress
         self.cancel_event = cancel_event or threading.Event()
 
     def base_options(self) -> _Params:
         return {
-            "format": "bestvideo*+bestaudio/best",
-            "merge_output_format": "mp4",
+            **FILE_FORMATS[self.file_format].options,
             "cookiesfrombrowser": ("firefox", self.profile),  # (browser, profile path)
             "quiet": False,
             "no_warnings": True,
@@ -106,7 +131,8 @@ class Youtube:
     def on_download_progress(self, status: Mapping[str, Any]) -> None:
         self.raise_if_cancelled()
         if self.on_progress:
-            self.on_progress(Progress(download_fraction(status), status.get("speed"), status.get("eta")))
+            fraction = download_fraction(status, audio_only=FILE_FORMATS[self.file_format].audio_only)
+            self.on_progress(Progress(fraction, status.get("speed"), status.get("eta")))
 
     def on_postprocess(self, status: Mapping[str, Any]) -> None:  # noqa: ARG002 - signature set by yt-dlp
         self.raise_if_cancelled()
@@ -150,11 +176,11 @@ class Youtube:
             **self.base_options(),
             "outtmpl": str(self.output_folder / "%(playlist_index)03d - %(title)s.%(ext)s"),
             "noplaylist": False,
-            # skip what's already downloaded
-            "download_archive": str(self.output_folder / "downloaded.txt"),
+            # skip what's already downloaded, per format so an mp3 run does not skip videos fetched as mp4
+            "download_archive": str(self.output_folder / f"downloaded_{self.file_format}.txt"),
         }
 
-        logger.info("Downloading %d video(s) to %s", total, self.output_folder)
+        logger.info("Downloading %d video(s) as %s to %s", total, self.file_format, self.output_folder)
         with yt_dlp.YoutubeDL(options) as ydl:
             return ydl.download([url]) == 0
 
@@ -165,7 +191,7 @@ class Youtube:
             "outtmpl": str(self.output_folder / "%(title)s.%(ext)s"),
             "noplaylist": True,
         }
-        logger.info("Downloading %s to %s", url, self.output_folder)
+        logger.info("Downloading %s as %s to %s", url, self.file_format, self.output_folder)
         with yt_dlp.YoutubeDL(options) as ydl:
             return ydl.download([url]) == 0
 

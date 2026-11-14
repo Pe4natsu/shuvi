@@ -1,11 +1,11 @@
 import argparse
 from pathlib import Path
 
-from shuvi.core.yt import Youtube
+from shuvi.core.yt import DEFAULT_FILE_FORMAT, FILE_FORMATS, Youtube
 
 
-def download(url: str, output_folder: Path):
-    youtube = Youtube(output_folder=output_folder)
+def download(url: str, output_folder: Path, file_format: str = DEFAULT_FILE_FORMAT):
+    youtube = Youtube(output_folder=output_folder, file_format=file_format)
     youtube.download_playlist(url)
 
 
@@ -15,9 +15,12 @@ def run():
     parser.add_argument(
         "--output-folder", type=Path, default=Path.cwd(), help="The folder to save the downloaded videos."
     )
+    parser.add_argument(
+        "--format", choices=list(FILE_FORMATS), default=DEFAULT_FILE_FORMAT, help="The file format to download."
+    )
     args = parser.parse_args()
 
-    download(args.url, args.output_folder)
+    download(args.url, args.output_folder, args.format)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from shuvi.core.yt import DownloadCancelled, Progress, Youtube
+from shuvi.core.yt import DEFAULT_FILE_FORMAT, DownloadCancelled, Progress, Youtube
 from shuvi.log import logger
 from shuvi.ui.playlist import format_duration
 
@@ -63,6 +63,7 @@ class Download:
     output_folder: Path
     profile: str | None = None
     playlist: bool = False
+    file_format: str = DEFAULT_FILE_FORMAT
     title: str = ""  # looked up from the URL in the background after queueing
     cancel_event: threading.Event = field(default_factory=threading.Event)
 
@@ -123,6 +124,7 @@ class DownloadWorker(QObject):
             youtube = Youtube(
                 download.output_folder,
                 download.profile,
+                file_format=download.file_format,
                 on_progress=partial(self.report_progress, download),
                 cancel_event=download.cancel_event,
             )
@@ -178,9 +180,9 @@ class QueueRow(QWidget):
         self.set_status(Status.PENDING)
 
     def show_description(self) -> None:
-        """Show the title (or the URL until it is known) and the output folder."""
+        """Show the title (or the URL until it is known), the file format and the output folder."""
         name = self.download.title or self.download.url
-        self.description.setText(f"{name}  ->  {self.download.output_folder}")
+        self.description.setText(f"{name} ({self.download.file_format})  ->  {self.download.output_folder}")
         self.description.setToolTip(f"{name}\n{self.download.url}\n{self.download.output_folder}")
 
     def set_status(self, status: Status, percent: int | None = None) -> None:
