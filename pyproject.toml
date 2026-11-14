@@ -10,8 +10,17 @@ dependencies = [
 ]
 
 
+[project.scripts]
+shuvi-playlist = "shuvi.core.playlists:run"
+shuvi-video = "shuvi.core.videos:run"
+
 [dependency-groups]
 dev = [
     "ruff>=0.14.0",
     "pyinstaller>=6.10",
 ]
+
+[build-system]
+requires      = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+

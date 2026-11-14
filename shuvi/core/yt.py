@@ -15,8 +15,9 @@ if TYPE_CHECKING:
 
 
 class Youtube:
-    def __init__(self, profile: str, output_folder: Path):
-        self.profile = profile
+    def __init__(self, output_folder: Path, profile: str | None = None):
+        load_dotenv()
+        self.profile = profile or os.environ["WEB_PROFILE"]
         self.output_folder = Path(output_folder)
         self.output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -76,8 +77,6 @@ class Youtube:
 
 
 if __name__ == "__main__":
-    load_dotenv()  # finds .env in this file's folder or the nearest parent folder (here: project root)
-    profile_path = os.environ["WEB_PROFILE"]
     output_folder = Path(__file__).parent.parent.parent / "downloads" / "Test"
-    youtube = Youtube(profile=profile_path, output_folder=output_folder)
+    youtube = Youtube(output_folder=output_folder)
     youtube.download_video(url="https://www.youtube.com/watch?v=MCYm453CE6Y")
