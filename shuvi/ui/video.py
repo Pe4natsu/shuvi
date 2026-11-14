@@ -3,7 +3,7 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 from qtpy.QtCore import Qt, QTimer, QUrl
-from qtpy.QtWebEngineWidgets import QWebEngineView  # pyright: ignore[reportPrivateImportUsage]
+from qtpy.QtWebEngineWidgets import QWebEngineView
 from qtpy.QtWidgets import QHBoxLayout, QLabel, QStackedLayout, QWidget
 
 from shuvi.ui.playlist import PlaylistWidget

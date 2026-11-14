@@ -1,27 +1,72 @@
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import yt_dlp
 from dotenv import load_dotenv
+from yt_dlp.utils import DownloadCancelled
 
 from shuvi.log import logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+
     from yt_dlp import _Params
     from yt_dlp.extractor.common import _InfoDict
 
+__all__ = ["DownloadCancelled", "Youtube", "download_fraction"]
+
+
+def download_fraction(status: Mapping[str, Any]) -> float:
+    """Fraction (0 to 1) of a whole video or playlist download reached at a yt-dlp progress status."""
+    info = status.get("info_dict") or {}
+    total_bytes = status.get("total_bytes") or status.get("total_bytes_estimate")
+    if status.get("status") == "finished":
+        file_fraction = 1.0
+    elif total_bytes:
+        file_fraction = min(status.get("downloaded_bytes", 0) / total_bytes, 1.0)
+    else:
+        file_fraction = 0.0
+
+    # Best quality is a video-only stream then an audio-only one, each counting for half of the video.
+    if info.get("acodec") == "none":
+        video_fraction = file_fraction / 2
+    elif info.get("vcodec") == "none":
+        video_fraction = (1 + file_fraction) / 2
+    else:
+        video_fraction = file_fraction
+
+    position = (info.get("playlist_autonumber") or 1) - 1
+    return (position + video_fraction) / (info.get("n_entries") or 1)
+
 
 class Youtube:
-    def __init__(self, output_folder: Path | None = None, profile: str | None = None):
-        """`output_folder` is only needed to download (default: current folder), not to list a playlist."""
+    def __init__(
+        self,
+        output_folder: Path | None = None,
+        profile: str | None = None,
+        on_progress: Callable[[float], None] | None = None,
+        cancel_event: threading.Event | None = None,
+    ):
+        """Prepare downloads with the cookies of a Firefox profile.
+
+        Args:
+            output_folder: where to download (default: current folder); not needed to list a playlist.
+            profile: Firefox profile path (default: WEB_PROFILE environment variable).
+            on_progress: called with the fraction (0 to 1) of the running download that is done.
+            cancel_event: set it from any thread to stop the running download with `DownloadCancelled`.
+
+        """
         load_dotenv()
         self.profile = profile or os.environ["WEB_PROFILE"]
         self.output_folder = Path(output_folder) if output_folder else Path.cwd()
         if output_folder:
             self.output_folder.mkdir(parents=True, exist_ok=True)
+        self.on_progress = on_progress
+        self.cancel_event = cancel_event or threading.Event()
 
     def base_options(self) -> _Params:
         return {
@@ -33,16 +78,44 @@ class Youtube:
             "ignoreerrors": True,
             "retries": 10,
             "fragment_retries": 10,
-            # JS runtime + solver scripts: needed for the "web" client to work.
-            # Without them yt-dlp falls back to android_vr, whose streams return 403.
-            # Deno (yt-dlp's default runtime) comes from the `yt-dlp[deno]` extra and is found in
-            # .venv/Scripts; the solver scripts come from the bundled yt-dlp-ejs package.
-            "js_runtimes": {"deno": {}},
+            "js_runtimes": {"deno": {}},  # solves YouTube's JS challenges, without which streams return 403
             "extractor_retries": 5,
             "sleep_interval_requests": 1,
             "sleep_interval": 5,
             "max_sleep_interval": 15,
+            "progress_hooks": [self.on_download_progress],
+            "postprocessor_hooks": [self.on_postprocess],
+            "match_filter": self.stop_if_cancelled,
         }
+
+    def raise_if_cancelled(self) -> None:
+        if self.cancel_event.is_set():
+            raise DownloadCancelled
+
+    def on_download_progress(self, status: Mapping[str, Any]) -> None:
+        self.raise_if_cancelled()
+        if self.on_progress:
+            self.on_progress(download_fraction(status))
+
+    def on_postprocess(self, status: Mapping[str, Any]) -> None:  # noqa: ARG002 - signature set by yt-dlp
+        self.raise_if_cancelled()
+
+    def stop_if_cancelled(self, info: Mapping[str, Any], *, incomplete: bool = False) -> str | None:  # noqa: ARG002 - signature set by yt-dlp
+        """Yt-dlp match filter that never skips a video but checks for cancellation before each one."""
+        self.raise_if_cancelled()
+        return None
+
+    def fetch_title(self, url: str) -> str:
+        """Title of a video or playlist, without downloading it ("" if it cannot be read)."""
+        options: _Params = {
+            **self.base_options(),
+            "extract_flat": "in_playlist",
+            "playlistend": 1,  # a playlist's title does not need all of its entries
+            "quiet": True,
+        }
+        with yt_dlp.YoutubeDL(options) as ydl:
+            info = ydl.extract_info(url, download=False)
+        return (info.get("title") or "") if info else ""
 
     def list_playlist(self, url: str) -> list[_InfoDict]:
         options: _Params = {**self.base_options(), "extract_flat": "in_playlist", "quiet": True}
@@ -57,7 +130,8 @@ class Youtube:
 
         return entries
 
-    def download_playlist(self, url: str):
+    def download_playlist(self, url: str) -> bool:
+        """Download every video of a playlist; return False if any of them failed."""
         entries = self.list_playlist(url)
         total = len(entries)
 
@@ -71,14 +145,18 @@ class Youtube:
 
         logger.info("Downloading %d video(s) to %s", total, self.output_folder)
         with yt_dlp.YoutubeDL(options) as ydl:
-            ydl.download([url])
+            return ydl.download([url]) == 0
 
-    def download_video(self, url: str):
-        options: _Params = {**self.base_options(), "outtmpl": str(self.output_folder / "%(title)s.%(ext)s")}
+    def download_video(self, url: str) -> bool:
+        """Download only the video of a URL, even if it is part of a playlist; return False if it failed."""
+        options: _Params = {
+            **self.base_options(),
+            "outtmpl": str(self.output_folder / "%(title)s.%(ext)s"),
+            "noplaylist": True,
+        }
+        logger.info("Downloading %s to %s", url, self.output_folder)
         with yt_dlp.YoutubeDL(options) as ydl:
-            info = ydl.extract_info(url, download=False)
-            logger.info("Downloading %s ...", info.get("title"))
-            ydl.download([url])
+            return ydl.download([url]) == 0
 
 
 if __name__ == "__main__":

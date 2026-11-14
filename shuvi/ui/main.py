@@ -1,9 +1,11 @@
 import sys
 
+from qtpy.QtGui import QCloseEvent
 from qtpy.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QTabWidget, QWidget
 
 from shuvi.constant import APP_NAME
 from shuvi.ui.form import ShuviForm
+from shuvi.ui.queues import QueueWidget
 from shuvi.ui.video import VideoWidget
 
 
@@ -26,11 +28,26 @@ class Shuvi(QMainWindow):
         super().__init__()
         self.setWindowTitle(APP_NAME)
 
-        tabs = QTabWidget(self)
-        self.setCentralWidget(tabs)
+        self.tabs = QTabWidget(self)
+        self.setCentralWidget(self.tabs)
 
         dl_window = DownloadWindow(self)
-        tabs.addTab(dl_window, "Download")
+        self.tabs.addTab(dl_window, "Download")
+
+        self.queue = QueueWidget(self)
+        self.tabs.addTab(self.queue, "Queue")
+
+        dl_window.form.download_requested.connect(self.queue.add)
+        self.queue.active_count_changed.connect(self.update_queue_tab)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.queue.worker.stop()
+        super().closeEvent(event)
+
+    def update_queue_tab(self, active_count: int) -> None:
+        """Show the number of downloads not finished yet in the queue tab's title."""
+        title = f"Queue ({active_count})" if active_count else "Queue"
+        self.tabs.setTabText(self.tabs.indexOf(self.queue), title)
 
 
 def main():
