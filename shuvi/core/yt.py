@@ -15,11 +15,13 @@ if TYPE_CHECKING:
 
 
 class Youtube:
-    def __init__(self, output_folder: Path, profile: str | None = None):
+    def __init__(self, output_folder: Path | None = None, profile: str | None = None):
+        """`output_folder` is only needed to download (default: current folder), not to list a playlist."""
         load_dotenv()
         self.profile = profile or os.environ["WEB_PROFILE"]
-        self.output_folder = Path(output_folder)
-        self.output_folder.mkdir(parents=True, exist_ok=True)
+        self.output_folder = Path(output_folder) if output_folder else Path.cwd()
+        if output_folder:
+            self.output_folder.mkdir(parents=True, exist_ok=True)
 
     def base_options(self) -> _Params:
         return {
@@ -46,6 +48,9 @@ class Youtube:
         options: _Params = {**self.base_options(), "extract_flat": "in_playlist", "quiet": True}
         with yt_dlp.YoutubeDL(options) as ydl:
             info = ydl.extract_info(url, download=False)
+        if not info:  # with "ignoreerrors", yt-dlp returns None instead of raising
+            logger.warning("Could not read playlist %s", url)
+            return []
 
         entries: list[_InfoDict] = [e for e in (info.get("entries") or []) if e]
         logger.info("Playlist '%s': %d video(s).", info.get("title"), len(entries))

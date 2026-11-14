@@ -3,17 +3,18 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 from qtpy.QtCore import Qt, QTimer, QUrl
-# qtpy re-imports this class by name, which Pylance misreads as a private import.
 from qtpy.QtWebEngineWidgets import QWebEngineView  # pyright: ignore[reportPrivateImportUsage]
-from qtpy.QtWidgets import QLabel, QStackedLayout, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QLabel, QStackedLayout, QWidget
 
-_VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
-_PLAYLIST_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+from shuvi.ui.playlist import PlaylistWidget
+
+VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+PLAYLIST_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 # YouTube refuses to play an embed that has no HTTP Referer ("Error 153"), so instead of
 # opening the embed URL directly, it is put in an iframe of a page served from an https origin.
-_PLAYER_BASE_URL = QUrl("https://localhost/")
-_PLAYER_HTML = """<!doctype html>
+PLAYER_BASE_URL = QUrl("https://localhost/")
+PLAYER_HTML = """<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -29,19 +30,26 @@ _PLAYER_HTML = """<!doctype html>
 </html>"""
 
 
-def embed_url(url: str) -> str | None:
-    """Turn a YouTube video, shorts or playlist URL into the URL of its embedded player.
+# Asks YouTube's player (inside the iframe) which video it is playing.
+CURRENT_VIDEO_JS = """(() => {
+  const player = document.getElementById("movie_player");
+  return player && player.getVideoData ? player.getVideoData().video_id : null;
+})()"""
 
-    Returns None if the text is not (yet) a complete YouTube URL.
+
+def parse_youtube_url(url: str) -> tuple[str | None, str | None]:
+    """Return the (video id, playlist id) of a YouTube video, shorts or playlist URL.
+
+    Either one is None if missing, or if the text is not (yet) a complete YouTube URL.
     """
     url = url.strip()
     if not url:
-        return None
+        return None, None
     parsed = urlparse(url if "://" in url else f"https://{url}")
     host = (parsed.hostname or "").removeprefix("www.").removeprefix("m.").removeprefix("music.")
     query = parse_qs(parsed.query)
 
-    video_id = None
+    video_id = ""
     if host == "youtu.be":
         video_id = parsed.path.strip("/").split("/")[0]
     elif host in ("youtube.com", "youtube-nocookie.com"):
@@ -51,59 +59,105 @@ def embed_url(url: str) -> str | None:
         elif len(parts) > 1 and parts[0] in ("shorts", "embed", "live", "v"):
             video_id = parts[1]
     else:
-        return None
+        return None, None
 
-    playlist = query.get("list", [""])[0]
-    list_param = f"?list={playlist}" if _PLAYLIST_ID.match(playlist) else ""
+    playlist_id = query.get("list", [""])[0]
+    return (
+        video_id if VIDEO_ID.match(video_id) else None,
+        playlist_id if PLAYLIST_ID.match(playlist_id) else None,
+    )
 
-    if video_id and _VIDEO_ID.match(video_id):
+
+def embed_url(video_id: str | None, playlist_id: str | None) -> str | None:
+    """URL of YouTube's embedded player for a video, a playlist, or a video within a playlist."""
+    list_param = f"?list={playlist_id}" if playlist_id else ""
+    if video_id:
         return f"https://www.youtube.com/embed/{video_id}{list_param}"
-    if list_param:
+    if playlist_id:
         return f"https://www.youtube.com/embed/videoseries{list_param}"
     return None
 
 
 class VideoWidget(QWidget):
-    """Plays the YouTube video (or playlist) of a URL, using YouTube's embedded player."""
+    """Plays the YouTube video of a URL with YouTube's embedded player.
+
+    For a playlist URL, the videos of the playlist are listed at the right of the player.
+    """
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent=parent)
-        self._stack = QStackedLayout(self)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.stack = QStackedLayout()
+        layout.addLayout(self.stack, stretch=2)
 
         self.placeholder = QLabel("Enter a YouTube URL to watch the video here", self)
         self.placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.placeholder.setWordWrap(True)
-        self._stack.addWidget(self.placeholder)
+        self.stack.addWidget(self.placeholder)
 
         self.player = QWebEngineView(self)
         self.player.setMinimumSize(320, 180)  # 16:9
-        self._stack.addWidget(self.player)
+        self.stack.addWidget(self.player)
 
-        self._url = ""
-        self._loaded_src: str | None = None
+        self.playlist = PlaylistWidget(self)
+        self.playlist.video_selected.connect(self.play_from_playlist)
+        layout.addWidget(self.playlist, stretch=1)
+
+        self.url = ""
+        self.loaded: tuple[str | None, str | None] = (None, None)  # (video id, playlist id)
 
         # Wait until the user stops typing before (re)loading the player.
-        self._debounce = QTimer(self)
-        self._debounce.setSingleShot(True)
-        self._debounce.setInterval(500)
-        self._debounce.timeout.connect(self._refresh)
+        self.debounce = QTimer(self)
+        self.debounce.setSingleShot(True)
+        self.debounce.setInterval(500)
+        self.debounce.timeout.connect(self.refresh)
+
+        # YouTube moves to the next video by itself: check regularly which one is playing.
+        self.current_video_poll = QTimer(self)
+        self.current_video_poll.setInterval(1000)
+        self.current_video_poll.timeout.connect(self.poll_current_video)
 
     def set_url(self, url: str):
-        self._url = url
-        self._debounce.start()
+        self.url = url
+        self.debounce.start()
 
-    def _refresh(self) -> None:
-        src = embed_url(self._url)
-        if src == self._loaded_src:
+    def refresh(self) -> None:
+        video_id, playlist_id = parse_youtube_url(self.url)
+        if (video_id, playlist_id) == self.loaded:
             return
-        self._loaded_src = src
+        self.play(video_id, playlist_id)
+        self.playlist.load(playlist_id)
+
+    def play(self, video_id: str | None, playlist_id: str | None) -> None:
+        self.loaded = (video_id, playlist_id)
+        src = embed_url(video_id, playlist_id)
 
         if src is None:
             self.player.setUrl(QUrl("about:blank"))  # stops the current video
-            self._stack.setCurrentWidget(self.placeholder)
+            self.stack.setCurrentWidget(self.placeholder)
         else:
-            self.player.setHtml(_PLAYER_HTML.replace("__SRC__", html.escape(src)), _PLAYER_BASE_URL)
-            self._stack.setCurrentWidget(self.player)
+            self.player.setHtml(PLAYER_HTML.replace("__SRC__", html.escape(src)), PLAYER_BASE_URL)
+            self.stack.setCurrentWidget(self.player)
+
+        self.playlist.set_current(video_id)
+        if playlist_id:
+            self.current_video_poll.start()
+        else:
+            self.current_video_poll.stop()
+
+    def play_from_playlist(self, video_id: str) -> None:
+        self.play(video_id, self.playlist.playlist_id)
+
+    def poll_current_video(self) -> None:
+        iframes = self.player.page().mainFrame().children()
+        if iframes:
+            iframes[0].runJavaScript(CURRENT_VIDEO_JS, 0, self.on_current_video)
+
+    def on_current_video(self, video_id: object) -> None:
+        if isinstance(video_id, str) and video_id and video_id != self.playlist.current_video_id:
+            self.playlist.set_current(video_id)
 
 
 if __name__ == "__main__":
@@ -113,7 +167,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     w = VideoWidget()
-    w.resize(640, 360)
-    w.set_url("https://www.youtube.com/watch?v=MCYm453CE6Y")
+    w.resize(960, 360)
+    w.set_url("https://www.youtube.com/watch?v=MCYm453CE6Y&list=PLSJxVvV6iE8K4p5iHPO7naBlCKjncqtGH")
     w.show()
     sys.exit(app.exec())
