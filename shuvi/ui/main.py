@@ -4,6 +4,7 @@ import sys
 from qtpy.QtGui import QCloseEvent
 from qtpy.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QTabWidget, QWidget
 
+from shuvi import __version__
 from shuvi.constant import APP_NAME
 from shuvi.ui.form import ShuviForm
 from shuvi.ui.log import LogWidget
@@ -31,7 +32,7 @@ class DownloadWindow(QWidget):
 class Shuvi(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle(APP_NAME)
+        self.setWindowTitle(f"{APP_NAME} - v{__version__}")
 
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)

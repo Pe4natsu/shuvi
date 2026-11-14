@@ -1,6 +1,6 @@
 [project]
 name = "shuvi"
-version = "0.1.0"
+dynamic = ["version"]
 description = "App to download Youtube videos"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,4 +29,7 @@ dev = [
 [build-system]
 requires      = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "shuvi/__init__.py"
 
